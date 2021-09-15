@@ -1,0 +1,155 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="styles.css">
+    </head>
+    <body>
+
+        <h1>Firebase Cloud Firestore</h1>
+
+        <div class="content">
+
+            <form id="add-cafe-form">
+                <input type="text" name="name" placeholder="Cafe Name">
+                <input type="text" name="city" placeholder="City">
+                <button>Add Cafe</button>
+            </form>
+
+            <ul id="cafe-list"></ul>
+
+        </div>
+
+        <script type="module">
+            // Import the functions you need from the SDKs you need
+            import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.2/firebase-app.js";
+            import { getFirestore,
+                     collection, 
+                     getDocs, 
+                     addDoc,
+                     deleteDoc,
+                     query,
+                     orderBy,
+                     doc,
+                     onSnapshot
+                     } from "https://www.gstatic.com/firebasejs/9.0.2/firebase-firestore.js";
+            import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.0.2/firebase-analytics.js";
+            // TODO: Add SDKs for Firebase products that you want to use
+            // https://firebase.google.com/docs/web/setup#available-libraries
+          
+            // Your web app's Firebase configuration
+            // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+            const firebaseConfig = {
+              apiKey: "AIzaSyCbnuK38AzSaftyR8u4iebby3MdUvgrWCo",
+              authDomain: "cafe-customers.firebaseapp.com",
+              projectId: "cafe-customers",
+              storageBucket: "cafe-customers.appspot.com",
+              messagingSenderId: "1037757504248",
+              appId: "1:1037757504248:web:ab0dc7295d45897420390d",
+              measurementId: "G-S6RNVEEGDN"
+            };
+          
+            // Initialize Firebase
+            const app = initializeApp(firebaseConfig);
+            const analytics = getAnalytics(app);
+            const db = getFirestore(app)
+            // db.settings({ timestampsInSnapshots: true })
+
+
+            // Setting Up App listner!
+            function listener() {
+                // Not important 
+                const cafeList = document.querySelector("#cafe-list")
+                const loading_text = document.createElement("li")
+                loading_text.textContent = "Please wait getting customer list..."
+                cafeList.appendChild(loading_text)
+
+                // Important Core Func.
+                const cafesCollection = collection(db, "Cafes")
+                onSnapshot(cafesCollection, (docSnaps) => {
+                    loading_text.style.display = "none"
+                    const changes = docSnaps.docChanges()
+                    changes.forEach(change => {
+                        if (change.type == 'added') {
+                            renderToDom(change.doc)
+                        } else if (change.type == 'removed') {
+                            // removed the li from the DOM
+                            const li = cafeList.querySelector(`[data-id='${change.doc.id}']`)
+                            cafeList.removeChild(li)
+                        }
+                    })
+                    // docSnaps.docChanges().forEach(change => renderToDom(change.doc))
+                    // docSnaps.forEach( doc => renderToDom(doc))
+                })
+            }
+            listener()
+
+            // Getting data from DB
+            async function getData() {
+                try {
+                    const cafesCollection = collection(db, 'Cafes')
+                    const snapShots = await getDocs(cafesCollection)
+                    const doc = snapShots.docs.map(doc => {
+                        renderToDom(doc)
+                    })
+                }
+                catch (e) {
+                    console.log("ERR! Fetching from DB", e)
+                }
+            }
+
+            // getData()
+
+            // Render To the DOM Argument Must Be A Document.
+            function renderToDom(docu) {
+                const cafeList = document.querySelector("#cafe-list")
+                const li = document.createElement('li')
+                const name = document.createElement("span")
+                const lastname = document.createElement("span")
+                const city = document.createElement("span")
+                const cross = document.createElement("div")
+
+                // set element content
+                li.setAttribute("data-id", docu.id)
+                name.textContent = docu.data().name
+                lastname.textContent = docu.data().lastname
+                city.textContent = docu.data().city
+                cross.textContent = "X"
+
+                // Append children to parent element
+                li.appendChild(name)
+                li.appendChild(lastname)
+                li.appendChild(city)
+                li.appendChild(cross)
+                cafeList.appendChild(li)
+
+                // DELETE FUNCTION using the cross element
+                cross.addEventListener("click", async (e) => {
+                    // e.stopPropagation()
+                    let id = e.target.parentElement.getAttribute("data-id")
+                    // alert(id)
+                    const Doc = doc(db, 'Cafes', id)
+                    await deleteDoc(Doc)
+
+                    // Listen for delete changes
+                    // onSnapshot(Doc, (docSnapshot) => console.log(docSnapshot.docs))
+                })
+            }
+            
+            // Form submission to Add data
+            const form = document.querySelector("#add-cafe-form")
+            form.addEventListener("submit", async function(e) {
+                e.preventDefault()
+                const cafesCollection = collection(db, "Cafes")
+                addDoc(cafesCollection, {
+                    name: form.name.value,
+                    city: form.city.value
+                })
+                // clear form values
+                form.name.value = ""
+                form.city.value = ""
+
+                // console.log(snapshot.doc)
+            })
+            
+        </script>
+    </body>
+</html>
